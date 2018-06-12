@@ -1,0 +1,346 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "    AWS CloudFormation Template for AWS Exploitation Lab ",
+    "Mappings": {
+        "RegionMap": {
+            "us-east-2": {
+                "AMI": "ami-6a003c0f"
+            }
+        }
+    },
+    "Parameters": {
+        "InstanceType": {
+            "AllowedValues": [
+                "t2.micro",
+                "t2.small",
+                "t2.medium",
+                "m3.medium",
+                "m3.large",
+                "m3.xlarge",
+                "m3.2xlarge"
+            ],
+            "ConstraintDescription": "must be a valid EC2 instance type.",
+            "Default": "t2.micro",
+            "Description": "WebServer EC2 instance type",
+            "Type": "String"
+        },
+        "KeyName": {
+            "ConstraintDescription": "must be the name of an existing EC2 KeyPair.",
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to     the instance",
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        },
+        "SSHLocation": {
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x.",
+            "Default": "192.150.9.200/32",
+            "Description": " The IP address range that can be used to SSH to the EC2     instances",
+            "MaxLength": "18",
+            "MinLength": "9",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "AttachGateway": {
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "InternetGateway"
+                },
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            },
+            "Type": "AWS::EC2::VPCGatewayAttachment"
+        },
+        "InstanceProfile": {
+            "Properties": {
+                "InstanceProfileName": "bluelizardInstanceRole",
+                "Roles": [
+                    {
+                        "Ref": "bluelizardEC2Role"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::InstanceProfile"
+        },
+        "InstanceSecurityGroup": {
+            "Properties": {
+                "GroupDescription": "bluelizardSecurityGroup",
+                "SecurityGroupIngress": [
+                    {
+                        "CidrIp": {
+                            "Ref": "SSHLocation"
+                        },
+                        "FromPort": "22",
+                        "IpProtocol": "tcp",
+                        "ToPort": "22"
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": "80",
+                        "IpProtocol": "tcp",
+                        "ToPort": "80"
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": "443",
+                        "IpProtocol": "tcp",
+                        "ToPort": "443"
+                    },
+                    {
+                        "CidrIp": "10.0.0.0/8",
+                        "FromPort": "0",
+                        "IpProtocol": "tcp",
+                        "ToPort": "65535"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            },
+            "Type": "AWS::EC2::SecurityGroup"
+        },
+        "InternetGateway": {
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Application",
+                        "Value": {
+                            "Ref": "AWS::StackId"
+                        }
+                    },
+                    {
+                        "Key": "Name",
+                        "Value": "bluelizardInternetGateway"
+                    }
+                ]
+            },
+            "Type": "AWS::EC2::InternetGateway"
+        },
+        "PrivatebluelizardInstance": {
+            "Properties": {
+                "IamInstanceProfile": "bluelizardInstanceRole",
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "AMI"
+                    ]
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "NetworkInterfaces": [
+                    {
+                        "DeleteOnTermination": "true",
+                        "DeviceIndex": "0",
+                        "GroupSet": [
+                            {
+                                "Ref": "InstanceSecurityGroup"
+                            }
+                        ],
+                        "SubnetId": {
+                            "Ref": "bluelizardSubnetPrivate"
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Application",
+                        "Value": {
+                            "Ref": "AWS::StackId"
+                        }
+                    },
+                    {
+                        "Key": "Name",
+                        "Value": "bluelizardPrivateInstance"
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": "#!/bin/bash\necho \"START\" > /tmp/userdata001.txt\nid >> /tmp/userdata001.txt\nuname -a >> /tmp/userdata001.txt\ncurl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\nsudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"\nsudo apt-get update\napt-cache policy docker-ce\nsudo apt-get install -y docker-ce\n"
+                }
+            },
+            "Type": "AWS::EC2::Instance"
+        },
+        "PublicbluelizardInstance": {
+            "Properties": {
+                "IamInstanceProfile": "bluelizardInstanceRole",
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "AMI"
+                    ]
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "NetworkInterfaces": [
+                    {
+                        "AssociatePublicIpAddress": "true",
+                        "DeleteOnTermination": "true",
+                        "DeviceIndex": "0",
+                        "GroupSet": [
+                            {
+                                "Ref": "InstanceSecurityGroup"
+                            }
+                        ],
+                        "SubnetId": {
+                            "Ref": "bluelizardSubnetPublic"
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Application",
+                        "Value": {
+                            "Ref": "AWS::StackId"
+                        }
+                    },
+                    {
+                        "Key": "Name",
+                        "Value": "bluelizardPublicInstance"
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": "#!/bin/bash\necho \"START\" > /tmp/userdata001.txt\nid >> /tmp/userdata001.txt\nuname -a >> /tmp/userdata001.txt\ncurl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\nsudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"\nsudo apt-get update\napt-cache policy docker-ce\nsudo apt-get install -y docker-ce\n"
+                }
+            },
+            "Type": "AWS::EC2::Instance"
+        },
+        "Route": {
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                },
+                "RouteTableId": {
+                    "Ref": "RouteTable"
+                }
+            },
+            "Type": "AWS::EC2::Route"
+        },
+        "RouteTable": {
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Application",
+                        "Value": {
+                            "Ref": "AWS::StackId"
+                        }
+                    },
+                    {
+                        "Key": "Name",
+                        "Value": "bluelizardRouteTable"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            },
+            "Type": "AWS::EC2::RouteTable"
+        },
+        "SubnetRouteTableAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "RouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "bluelizardSubnetPublic"
+                }
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        },
+        "VPC": {
+            "Properties": {
+                "CidrBlock": "10.0.0.0/16",
+                "Tags": [
+                    {
+                        "Key": "Application",
+                        "Value": {
+                            "Ref": "AWS::StackId"
+                        }
+                    }
+                ]
+            },
+            "Type": "AWS::EC2::VPC"
+        },
+        "bluelizardEC2Role": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/ReadOnlyAccess"
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "bluelizardSubnetPrivate": {
+            "Properties": {
+                "CidrBlock": "10.0.2.0/24",
+                "MapPublicIpOnLaunch": "false",
+                "Tags": [
+                    {
+                        "Key": "Application",
+                        "Value": {
+                            "Ref": "AWS::StackId"
+                        }
+                    },
+                    {
+                        "Key": "Name",
+                        "Value": "bluelizardSubnet_private"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            },
+            "Type": "AWS::EC2::Subnet"
+        },
+        "bluelizardSubnetPublic": {
+            "Properties": {
+                "CidrBlock": "10.0.1.0/24",
+                "MapPublicIpOnLaunch": "true",
+                "Tags": [
+                    {
+                        "Key": "Application",
+                        "Value": {
+                            "Ref": "AWS::StackId"
+                        }
+                    },
+                    {
+                        "Key": "Name",
+                        "Value": "bluelizardSubnet_public"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            },
+            "Type": "AWS::EC2::Subnet"
+        }
+    }
+}
