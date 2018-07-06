@@ -16,8 +16,11 @@ from troposphere.ec2 import Route, \
     Instance, InternetGateway, \
     SecurityGroupRule, SecurityGroup, \
     LaunchSpecifications
+from troposphere.s3 import BucketPolicy, Bucket
 from troposphere.iam import Role, InstanceProfile, Policy
+from troposphere.cloudtrail import Trail
 import awacs
+import awacs.s3 as s3
 
 public_instance_userdata = """#!/bin/bash
 echo "START" > /tmp/userdata001.txt
@@ -125,7 +128,6 @@ def generate_template(service_name):
         "arn:aws:iam::aws:policy/ReadOnlyAccess"
     ]
 
-
     ec2_snapshot_policy_document = awacs.aws.Policy(
         Statement=[
             awacs.aws.Statement(
@@ -133,7 +135,7 @@ def generate_template(service_name):
                 Effect=awacs.aws.Allow,
                 Action=[
                     awacs.aws.Action("ec2", "CreateSnapshot"),
-                    awacs.aws.Action("ec2", "ModifySnapshotAttributes"),
+                    awacs.aws.Action("ec2", "ModifySnapshotAttribute"),
                 ],
                 Resource=["*"]
             )
@@ -325,6 +327,55 @@ def generate_template(service_name):
         )
     )
     t.add_output(outputs)
+
+    # Set up S3 Bucket and CloudTrail
+    S3Bucket = t.add_resource(
+        Bucket(
+            "S3Bucket",
+            DeletionPolicy="Retain"
+        )
+    )
+
+    S3PolicyDocument=awacs.aws.PolicyDocument(
+        Id='EnforceServersideEncryption',
+        Version='2012-10-17',
+        Statement=[
+            awacs.aws.Statement(
+                Sid='PermitCTBucketPut',
+                Action=[s3.PutObject],
+                Effect=awacs.aws.Allow,
+                Principal=awacs.aws.Principal("Service", ["cloudtrail.amazonaws.com"]),
+                Resource=[Join('', [s3.ARN(''), Ref(S3Bucket), "/*"])],
+            ),
+            awacs.aws.Statement(
+                Sid='PermitCTBucketACLRead',
+                Action=[s3.GetBucketAcl],
+                Effect=awacs.aws.Allow,
+                Principal=awacs.aws.Principal("Service", ["cloudtrail.amazonaws.com"]),
+                Resource=[Join('', [s3.ARN(''), Ref(S3Bucket)])],
+            )
+        ]
+    )
+
+    S3BucketPolicy = t.add_resource(
+        BucketPolicy(
+            "BucketPolicy",
+            PolicyDocument=S3PolicyDocument,
+            Bucket=Ref(S3Bucket),
+            DependsOn=[S3Bucket]
+        )
+    )
+
+    myTrail = t.add_resource(
+        Trail(
+            "CloudTrail",
+            IsLogging=True,
+            S3BucketName=Ref(S3Bucket),
+            DependsOn=["BucketPolicy"],
+        )
+    )
+    myTrail.IsMultiRegionTrail = True
+    myTrail.IncludeGlobalServiceEvents = True
     return t.to_json()
 
 

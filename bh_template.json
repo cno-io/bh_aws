@@ -67,6 +67,88 @@
             },
             "Type": "AWS::EC2::VPCGatewayAttachment"
         },
+        "BucketPolicy": {
+            "DependsOn": [
+                "S3Bucket"
+            ],
+            "Properties": {
+                "Bucket": {
+                    "Ref": "S3Bucket"
+                },
+                "PolicyDocument": {
+                    "Id": "EnforceServersideEncryption",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "s3:PutObject"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "cloudtrail.amazonaws.com"
+                                ]
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:s3:::",
+                                            {
+                                                "Ref": "S3Bucket"
+                                            },
+                                            "/*"
+                                        ]
+                                    ]
+                                }
+                            ],
+                            "Sid": "PermitCTBucketPut"
+                        },
+                        {
+                            "Action": [
+                                "s3:GetBucketAcl"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "cloudtrail.amazonaws.com"
+                                ]
+                            },
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:s3:::",
+                                            {
+                                                "Ref": "S3Bucket"
+                                            }
+                                        ]
+                                    ]
+                                }
+                            ],
+                            "Sid": "PermitCTBucketACLRead"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                }
+            },
+            "Type": "AWS::S3::BucketPolicy"
+        },
+        "CloudTrail": {
+            "DependsOn": [
+                "BucketPolicy"
+            ],
+            "Properties": {
+                "IncludeGlobalServiceEvents": "true",
+                "IsLogging": "true",
+                "IsMultiRegionTrail": "true",
+                "S3BucketName": {
+                    "Ref": "S3Bucket"
+                }
+            },
+            "Type": "AWS::CloudTrail::Trail"
+        },
         "InstanceProfile": {
             "Properties": {
                 "InstanceProfileName": "bluelizardInstanceRole",
@@ -276,6 +358,10 @@
             },
             "Type": "AWS::EC2::RouteTable"
         },
+        "S3Bucket": {
+            "DeletionPolicy": "Retain",
+            "Type": "AWS::S3::Bucket"
+        },
         "SubnetRouteTableAssociation": {
             "Properties": {
                 "RouteTableId": {
@@ -351,7 +437,7 @@
                                 {
                                     "Action": [
                                         "ec2:CreateSnapshot",
-                                        "ec2:ModifySnapshotAttributes"
+                                        "ec2:ModifySnapshotAttribute"
                                     ],
                                     "Effect": "Allow",
                                     "Resource": [
