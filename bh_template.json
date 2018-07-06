@@ -2,9 +2,25 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "    AWS CloudFormation Template for AWS Exploitation Lab ",
     "Mappings": {
-        "RegionMap": {
+        "PrivateRegionMap": {
+            "us-east-2": {
+                "AMI": "ami-02ba87fb8fcbdb1d5"
+            }
+        },
+        "PublicRegionMap": {
             "us-east-2": {
                 "AMI": "ami-6a003c0f"
+            }
+        }
+    },
+    "Outputs": {
+        "PublicIP": {
+            "Description": "IP Address of Public Instance",
+            "Value": {
+                "Fn::GetAtt": [
+                    "PublicbluelizardInstance",
+                    "PublicIp"
+                ]
             }
         }
     },
@@ -32,7 +48,7 @@
         "SSHLocation": {
             "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
             "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x.",
-            "Default": "192.150.9.200/32",
+            "Default": "0.0.0.0/32",
             "Description": " The IP address range that can be used to SSH to the EC2     instances",
             "MaxLength": "18",
             "MinLength": "9",
@@ -116,12 +132,23 @@
             },
             "Type": "AWS::EC2::InternetGateway"
         },
+        "PrivInstanceProfile": {
+            "Properties": {
+                "InstanceProfileName": "bluelizardPrivInstanceRole",
+                "Roles": [
+                    {
+                        "Ref": "bluelizardPrivEC2Role"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::InstanceProfile"
+        },
         "PrivatebluelizardInstance": {
             "Properties": {
-                "IamInstanceProfile": "bluelizardInstanceRole",
+                "IamInstanceProfile": "bluelizardPrivInstanceRole",
                 "ImageId": {
                     "Fn::FindInMap": [
-                        "RegionMap",
+                        "PrivateRegionMap",
                         {
                             "Ref": "AWS::Region"
                         },
@@ -161,17 +188,16 @@
                     }
                 ],
                 "UserData": {
-                    "Fn::Base64": "#!/bin/bash\necho \"START\" > /tmp/userdata001.txt\nid >> /tmp/userdata001.txt\nuname -a >> /tmp/userdata001.txt\ncurl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\nsudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"\nsudo apt-get update\napt-cache policy docker-ce\nsudo apt-get install -y docker-ce\n"
+                    "Fn::Base64": "#!/bin/bash\necho \"START\" > /tmp/userdata001.txt\nid >> /tmp/userdata001.txt\nuname -a >> /tmp/userdata001.txt\n#curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\n#sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"\n#sudo apt-get update\n#apt-cache policy docker-ce\n#sudo apt-get install -y docker-ce\nsudo docker run -d -p 8080:8080 cnoio/nbvulns001\nsudo docker run -d --privileged -p 5000:5000 cnoio/nbvulns002\n"
                 }
             },
             "Type": "AWS::EC2::Instance"
         },
         "PublicbluelizardInstance": {
             "Properties": {
-                "IamInstanceProfile": "bluelizardInstanceRole",
                 "ImageId": {
                     "Fn::FindInMap": [
-                        "RegionMap",
+                        "PublicRegionMap",
                         {
                             "Ref": "AWS::Region"
                         },
@@ -212,7 +238,7 @@
                     }
                 ],
                 "UserData": {
-                    "Fn::Base64": "#!/bin/bash\necho \"START\" > /tmp/userdata001.txt\nid >> /tmp/userdata001.txt\nuname -a >> /tmp/userdata001.txt\ncurl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\nsudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"\nsudo apt-get update\napt-cache policy docker-ce\nsudo apt-get install -y docker-ce\n"
+                    "Fn::Base64": "#!/bin/bash\necho \"START\" > /tmp/userdata001.txt\nid >> /tmp/userdata001.txt\nuname -a >> /tmp/userdata001.txt\ncurl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\nsudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"\nsudo echo \"deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ xenial main\" > /etc/apt/sources.list.d/azure-cli.list\ncurl -L https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -\nsudo apt-get update\napt-cache policy docker-ce\nsudo apt-get install -y docker-ce\nsudo apt-get install -y nmap\nsudo apt-get install -y awscli\nsudo apt-get install azure-cli\nsudo docker pull cnoio/amass\nsudo docker pull cnoio/subjack\nsudo docker pull cnoio/nimbusland\nsudo docker pull cnoio/gobuster\nsudo docker pull cnoio/weirdaal\n"
                 }
             },
             "Type": "AWS::EC2::Instance"
@@ -294,6 +320,49 @@
                 },
                 "ManagedPolicyArns": [
                     "arn:aws:iam::aws:policy/ReadOnlyAccess"
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "bluelizardPrivEC2Role": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/ReadOnlyAccess"
+                ],
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "ec2:CreateSnapshot",
+                                        "ec2:ModifySnapshotAttributes"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "*"
+                                    ],
+                                    "Sid": "PermitEC2Snapshots"
+                                }
+                            ]
+                        },
+                        "PolicyName": "EC2SnapshotPermissions"
+                    }
                 ]
             },
             "Type": "AWS::IAM::Role"

@@ -16,10 +16,8 @@ from troposphere.ec2 import Route, \
     Instance, InternetGateway, \
     SecurityGroupRule, SecurityGroup, \
     LaunchSpecifications
-from troposphere.iam import Role, InstanceProfile
-from awacs.aws import Allow, Statement, Principal, Policy
-from awacs.sts import AssumeRole
-
+from troposphere.iam import Role, InstanceProfile, Policy
+import awacs
 
 public_instance_userdata = """#!/bin/bash
 echo "START" > /tmp/userdata001.txt
@@ -27,27 +25,42 @@ id >> /tmp/userdata001.txt
 uname -a >> /tmp/userdata001.txt
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+sudo echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ xenial main" > /etc/apt/sources.list.d/azure-cli.list
+curl -L https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
 sudo apt-get update
 apt-cache policy docker-ce
 sudo apt-get install -y docker-ce
+sudo apt-get install -y nmap
+sudo apt-get install -y awscli
+sudo apt-get install azure-cli
+sudo docker pull cnoio/amass
+sudo docker pull cnoio/subjack
+sudo docker pull cnoio/nimbusland
+sudo docker pull cnoio/gobuster
+sudo docker pull cnoio/weirdaal
 """
 
 private_instance_userdata = """#!/bin/bash
-echo "START" > /tmp/userdata001.txt
+echo \"START\" > /tmp/userdata001.txt
 id >> /tmp/userdata001.txt
 uname -a >> /tmp/userdata001.txt
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-sudo apt-get update
-apt-cache policy docker-ce
-sudo apt-get install -y docker-ce
+#curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+#sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"
+#sudo apt-get update
+#apt-cache policy docker-ce
+#sudo apt-get install -y docker-ce
+sudo docker run -d -p 8080:8080 cnoio/nbvulns001
+sudo docker run -d --privileged -p 5000:5000 cnoio/nbvulns002
 """
-
-
-ami_mapping = {
+#Standard Ubuntu 16 Image
+ami_public_mapping = {
     "us-east-2": {"AMI": "ami-6a003c0f"},
 }
 
+#Ubuntu 16 image with Docker and Preloaded containers
+ami_private_mapping = {
+    "us-east-2": {"AMI": "ami-02ba87fb8fcbdb1d5"},
+}
 
 def generate_template(service_name):
     t = Template()
@@ -56,7 +69,8 @@ def generate_template(service_name):
     t.add_description("""\
     AWS CloudFormation Template for AWS Exploitation Lab """)
 
-    t.add_mapping("RegionMap", ami_mapping)
+    t.add_mapping("PublicRegionMap", ami_public_mapping)
+    t.add_mapping("PrivateRegionMap", ami_private_mapping)
 
     keyname_param = t.add_parameter(
         Parameter(
@@ -97,17 +111,55 @@ def generate_template(service_name):
 
     ec2_role = t.add_resource(Role(
         "%sEC2Role" % service_name,
-        AssumeRolePolicyDocument=Policy(
+        AssumeRolePolicyDocument=awacs.aws.Policy(
             Statement=[
-                Statement(
-                    Effect=Allow,
-                    Action=[AssumeRole],
-                    Principal=Principal("Service", ["ec2.amazonaws.com"])
+                awacs.aws.Statement(
+                    Effect=awacs.aws.Allow,
+                    Action=[awacs.aws.Action("sts", "AssumeRole")],
+                    Principal=awacs.aws.Principal("Service", ["ec2.amazonaws.com"])
                 )
             ]
         )
     ))
     ec2_role.ManagedPolicyArns = [
+        "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    ]
+
+
+    ec2_snapshot_policy_document = awacs.aws.Policy(
+        Statement=[
+            awacs.aws.Statement(
+                Sid="PermitEC2Snapshots",
+                Effect=awacs.aws.Allow,
+                Action=[
+                    awacs.aws.Action("ec2", "CreateSnapshot"),
+                    awacs.aws.Action("ec2", "ModifySnapshotAttributes"),
+                ],
+                Resource=["*"]
+            )
+        ]
+    )
+
+    ec2_snapshot_policy = Policy(
+        PolicyName="EC2SnapshotPermissions",
+        PolicyDocument=ec2_snapshot_policy_document
+    )
+
+    priv_ec2_role = t.add_resource(Role(
+        "%sPrivEC2Role" % service_name,
+        AssumeRolePolicyDocument=awacs.aws.Policy(
+            Statement=[
+                awacs.aws.Statement(
+                    Effect=awacs.aws.Allow,
+                    Action=[awacs.aws.Action("sts", "AssumeRole")],
+                    Principal=awacs.aws.Principal("Service", ["ec2.amazonaws.com"])
+                )
+            ]
+        ),
+        Policies=[ec2_snapshot_policy]
+    ))
+
+    priv_ec2_role.ManagedPolicyArns = [
         "arn:aws:iam::aws:policy/ReadOnlyAccess"
     ]
 
@@ -123,6 +175,12 @@ def generate_template(service_name):
             "InstanceProfile",
             InstanceProfileName="%sInstanceRole" % (service_name),
             Roles=[Ref(ec2_role)]))
+
+    privInstanceProfile = t.add_resource(
+        InstanceProfile(
+            "PrivInstanceProfile",
+            InstanceProfileName="%sPrivInstanceRole" % (service_name),
+            Roles=[Ref(priv_ec2_role)]))
 
     public_subnet = t.add_resource(
         Subnet(
@@ -219,7 +277,7 @@ def generate_template(service_name):
     public_instance = t.add_resource(
         Instance(
             "Public%sInstance" % service_name,
-            ImageId=FindInMap("RegionMap", Ref("AWS::Region"), "AMI"),
+            ImageId=FindInMap("PublicRegionMap", Ref("AWS::Region"), "AMI"),
             InstanceType=Ref(instanceType_param),
             KeyName=Ref(keyname_param),
             NetworkInterfaces=[
@@ -233,15 +291,14 @@ def generate_template(service_name):
             UserData=Base64(public_instance_userdata),
             Tags=Tags(
                 Application=ref_stack_id,
-                Name='%sPublicInstance' % (service_name)),
-            IamInstanceProfile="%sInstanceRole" % (service_name)
+                Name='%sPublicInstance' % (service_name))
         )
     )
 
     private_instance = t.add_resource(
         Instance(
             "Private%sInstance" % service_name,
-            ImageId=FindInMap("RegionMap", Ref("AWS::Region"), "AMI"),
+            ImageId=FindInMap("PrivateRegionMap", Ref("AWS::Region"), "AMI"),
             InstanceType=Ref(instanceType_param),
             KeyName=Ref(keyname_param),
             NetworkInterfaces=[
@@ -255,9 +312,19 @@ def generate_template(service_name):
             Tags=Tags(
                 Application=ref_stack_id,
                 Name='%sPrivateInstance' % (service_name)),
-            IamInstanceProfile="%sInstanceRole" % (service_name)
+            IamInstanceProfile="%sPrivInstanceRole" % (service_name)
         )
     )
+
+    outputs = []
+    outputs.append(
+        Output(
+            "PublicIP",
+            Description="IP Address of Public Instance",
+            Value=GetAtt(public_instance, "PublicIp"),
+        )
+    )
+    t.add_output(outputs)
     return t.to_json()
 
 
