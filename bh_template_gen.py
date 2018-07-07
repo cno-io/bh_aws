@@ -53,7 +53,7 @@ uname -a >> /tmp/userdata001.txt
 #apt-cache policy docker-ce
 #sudo apt-get install -y docker-ce
 sudo docker run -d -p 8080:8080 cnoio/nbvulns001
-sudo docker run -d --privileged -p 5000:5000 cnoio/nbvulns002
+sudo docker run -d -v /home/ubuntu:/home/ubuntu:ro --privileged -p 5000:5000 cnoio/nbvulns002
 """
 #Standard Ubuntu 16 Image
 ami_public_mapping = {
