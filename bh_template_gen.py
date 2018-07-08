@@ -41,6 +41,10 @@ sudo docker pull cnoio/subjack
 sudo docker pull cnoio/nimbusland
 sudo docker pull cnoio/gobuster
 sudo docker pull cnoio/weirdaal
+sudo docker pull cnoio/pyinstaller
+sudo apt-get install -y python
+sudo apt-get install -y python-pip
+sudo pip install flask
 """
 
 private_instance_userdata = """#!/bin/bash
