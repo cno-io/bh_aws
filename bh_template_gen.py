@@ -42,9 +42,14 @@ sudo docker pull cnoio/nimbusland
 sudo docker pull cnoio/gobuster
 sudo docker pull cnoio/weirdaal
 sudo docker pull cnoio/pyinstaller
+sudo docker pull cnoio/mintyoffline
+sudo docker pull cnoio/azureclione
+sudo docker pull cnoio/cosmik
 sudo apt-get install -y python
 sudo apt-get install -y python-pip
 sudo pip install flask
+sudo apt-get install -y john
+sudo apt-get install -y binwalk
 """
 
 private_instance_userdata = """#!/bin/bash
