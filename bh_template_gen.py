@@ -68,7 +68,7 @@ ami_public_mapping = {
 
 #Ubuntu 16 image with Docker and Preloaded containers
 ami_private_mapping = {
-    "us-east-2": {"AMI": "ami-02ba87fb8fcbdb1d5"},
+    "us-east-2": {"AMI": "ami-0c12c972699c50049"},
 }
 
 def generate_template(service_name):
