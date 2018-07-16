@@ -274,6 +274,11 @@ def generate_template(service_name):
                     CidrIp='0.0.0.0/0'),
                 SecurityGroupRule(
                     IpProtocol='tcp',
+                    FromPort='1080',
+                    ToPort='1080',
+                    CidrIp='0.0.0.0/0'),
+                SecurityGroupRule(
+                    IpProtocol='tcp',
                     FromPort='443',
                     ToPort='443',
                     CidrIp='0.0.0.0/0'),
