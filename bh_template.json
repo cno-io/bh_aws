@@ -180,6 +180,12 @@
                     },
                     {
                         "CidrIp": "0.0.0.0/0",
+                        "FromPort": "1080",
+                        "IpProtocol": "tcp",
+                        "ToPort": "1080"
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
                         "FromPort": "443",
                         "IpProtocol": "tcp",
                         "ToPort": "443"
