@@ -52,7 +52,9 @@ sudo mkdir -p /root/.principalmap/
 sudo chmod 700 /shared/lookups/nslookups.sh
 sudo chmod 700 /shared/other/bashrc.sh
 sudo echo "source /shared/other/bashrc.sh" >> /root/.bashrc
+echo "$(ifconfig eth0 | grep 'inet addr' | cut -d: -f2 | awk '{print $1}') $(hostname)" >> /tmp/userdata001.txt
 echo "$(ifconfig eth0 | grep 'inet addr' | cut -d: -f2 | awk '{print $1}') $(hostname)" | sudo tee --append /etc/hosts
+echo "END" >> /tmp/userdata001.txt
 """
 
 private_instance_userdata = """#!/bin/bash
@@ -68,6 +70,7 @@ sudo docker run -d -p 8080:8080 cnoio/nbvulns001
 sudo docker run -d -v /home/ubuntu:/home/ubuntu:ro --privileged -p 5000:5000 cnoio/nbvulns002
 sudo docker run -d -p 8000:8000 cnoio/nbvulns003
 sudo docker run -d -p 8081:8081 cnoio/nbvulns004
+echo "END" >> /tmp/userdata001.txt
 """
 #Standard Ubuntu 16 Image
 ami_public_mapping = {
