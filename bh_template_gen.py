@@ -50,7 +50,7 @@ sudo apt-get install -y python-pip
 sudo pip install flask
 sudo apt-get install -y john
 sudo apt-get install -y binwalk
-echo "$(ifconfig eth0 | grep 'inet addr' | cut -d: -f2 | awk '{print $1}') $(hostname)" >> /etc/hosts
+sudo sh -c 'echo "$(ifconfig eth0 | grep '"'"'inet addr'"'"' | cut -d: -f2 | awk '"'"'{print $1}'"'"') $(hostname)" >> /etc/hosts'
 """
 
 private_instance_userdata = """#!/bin/bash
