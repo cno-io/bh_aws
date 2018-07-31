@@ -35,21 +35,23 @@ apt-cache policy docker-ce
 sudo apt-get install -y docker-ce
 sudo apt-get install -y nmap
 sudo apt-get install -y awscli
-sudo apt-get install azure-cli
-sudo docker pull cnoio/amass
-sudo docker pull cnoio/subjack
-sudo docker pull cnoio/nimbusland
-sudo docker pull cnoio/gobuster
-sudo docker pull cnoio/weirdaal
-sudo docker pull cnoio/pyinstaller
-sudo docker pull cnoio/mintyoffline
-sudo docker pull cnoio/azureclione
-sudo docker pull cnoio/cosmik
 sudo apt-get install -y python
 sudo apt-get install -y python-pip
 sudo pip install flask
 sudo apt-get install -y john
 sudo apt-get install -y binwalk
+sudo apt-get install -y virtualenv
+sudo apt-get install -y git
+sudo mkdir /shared
+sudo git clone https://github.com/cno-io/bh_shared.git /shared
+sudo mkdir -p /shared/lists/
+sudo mkdir -p /shared/spider/
+sudo mkdir -p /shared/lookups/
+sudo mkdir -p /root/.aws/
+sudo mkdir -p /root/.principalmap/
+sudo chmod 700 /shared/lookups/nslookups.sh
+sudo chmod 700 /shared/other/bashrc.sh
+sudo echo "source /shared/other/bashrc.sh" >> /root/.bashrc
 echo "$(ifconfig eth0 | grep 'inet addr' | cut -d: -f2 | awk '{print $1}') $(hostname)" | sudo tee --append /etc/hosts
 """
 
