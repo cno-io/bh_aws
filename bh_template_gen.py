@@ -38,6 +38,7 @@ sudo apt-get install -y awscli
 sudo apt-get install -y python
 sudo apt-get install -y python-pip
 sudo pip install flask
+sudo pip install boto3
 sudo apt-get install -y john
 sudo apt-get install -y binwalk
 sudo apt-get install -y virtualenv
