@@ -4,7 +4,7 @@
     "Mappings": {
         "PrivateRegionMap": {
             "us-east-2": {
-                "AMI": "ami-0c12c972699c50049"
+                "AMI": "ami-007f6313abbc443c6"
             }
         },
         "PublicRegionMap": {
