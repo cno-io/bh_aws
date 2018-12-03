@@ -67,10 +67,11 @@ uname -a >> /tmp/userdata001.txt
 #sudo apt-get update
 #apt-cache policy docker-ce
 #sudo apt-get install -y docker-ce
-sudo docker run -d -p 8080:8080 cnoio/nbvulns001
-sudo docker run -d -v /home/ubuntu:/home/ubuntu:ro --privileged -p 5000:5000 cnoio/nbvulns002
-sudo docker run -d -p 8000:8000 cnoio/nbvulns003
-sudo docker run -d -p 8081:8081 cnoio/nbvulns004
+sudo docker run --restart=always -d -p 8080:8080 cnoio/nbvulns001
+sudo docker run --restart=always -d -v /home/ubuntu:/home/ubuntu:ro --privileged -p 5000:5000 cnoio/nbvulns002
+sudo docker run --restart=always -d -p 8000:8000 cnoio/nbvulns003
+sudo docker run --restart=always -d -p 8081:8081 cnoio/nbvulns004
+sudo docker run --restart=always -d -v /home/ubuntu:/home/ubuntu:ro --privileged -p 5001:5001 cnoio/nbvulns005
 echo "END" >> /tmp/userdata001.txt
 """
 #Standard Ubuntu 16 Image
@@ -80,7 +81,7 @@ ami_public_mapping = {
 
 #Ubuntu 16 image with Docker and Preloaded containers
 ami_private_mapping = {
-    "us-east-2": {"AMI": "ami-007f6313abbc443c6"},
+    "us-east-2": {"AMI": "ami-0255fb45a92df418d"},
 }
 
 def generate_template(service_name):
