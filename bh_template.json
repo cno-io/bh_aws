@@ -276,6 +276,7 @@
                     }
                 ],
                 "UserData": {
+                    "Fn::Base64": "#!/bin/bash\necho \"START\" > /tmp/userdata001.txt\nid >> /tmp/userdata001.txt\nuname -a >> /tmp/userdata001.txt\n#curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -\n#sudo add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\"\n#sudo apt-get update\n#apt-cache policy docker-ce\n#sudo apt-get install -y docker-ce\nsudo docker run --restart=always -d -p 8080:8080 cnoio/nbvulns001\nsudo docker run --restart=always -d -v /home/ubuntu:/home/ubuntu:ro --privileged -p 5000:5000 cnoio/nbvulns002\nsudo docker run --restart=always -d -p 8000:8000 cnoio/nbvulns003\nsudo docker run --restart=always -d -p 8081:8081 cnoio/nbvulns004\nsudo docker run --restart=always -d -v /home/ubuntu:/home/ubuntu:ro --privileged -p 5001:5001 cnoio/nbvulns005\necho \"END\" >> /tmp/userdata001.txt\n"
                 }
             },
             "Type": "AWS::EC2::Instance"
