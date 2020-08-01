@@ -55,6 +55,11 @@ sudo chmod 700 /shared/other/bashrc.sh
 sudo echo "source /shared/other/bashrc.sh" >> /root/.bashrc
 echo "$(ifconfig eth0 | grep 'inet addr' | cut -d: -f2 | awk '{print $1}') $(hostname)" >> /tmp/userdata001.txt
 echo "$(ifconfig eth0 | grep 'inet addr' | cut -d: -f2 | awk '{print $1}') $(hostname)" | sudo tee --append /etc/hosts
+sudo curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+sudo echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+sudo curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+sudo apt-get update && sudo apt-get install -y google-cloud-sdk
+sudo pip install google-api-python-client
 echo "END" >> /tmp/userdata001.txt
 """
 
