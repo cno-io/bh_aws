@@ -60,7 +60,6 @@ sudo echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.
 sudo curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
 sudo apt-get update && sudo apt-get install -y google-cloud-sdk
 sudo pip install google-api-python-client
-sudo pip install aws-sam-cli
 echo "END" >> /tmp/userdata001.txt
 """
 
